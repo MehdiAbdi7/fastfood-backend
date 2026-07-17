@@ -1,5 +1,8 @@
 import mongoose from "mongoose";
+import dns from "node:dns";
 import { logger } from "./logger.js";
+
+dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
 mongoose.set("debug", process.env.NODE_ENV === "development");
 
