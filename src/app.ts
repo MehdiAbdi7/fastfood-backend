@@ -3,6 +3,12 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import authRouter from "./routes/auth.routes.js";
+import { StatusCodes } from "http-status-codes";
+import { errorResponse } from "./utils/responseFormatter.js";
+import menuCategoryRouter from "./routes/menuCategory.routes.js";
+import menuExtraTypeRouter from "./routes/menuExtraType.routes.js";
+import menuExtraRouter from "./routes/menuExtra.routes.js";
+import menuItemRouter from "./routes/menuItem.routes.js";
 
 const app = express();
 
@@ -25,6 +31,10 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // routes
 app.use("/auth", authRouter);
+app.use("/menu-categories", menuCategoryRouter);
+app.use("/menu-extra-types", menuExtraTypeRouter);
+app.use("/menu-extras", menuExtraRouter);
+app.use("/menu-items", menuItemRouter);
 
 // route de test
 app.get("/health", (_req, res) => {
@@ -39,13 +49,38 @@ app.use((_req, res) => {
 // error route
 app.use(
   (
-    err: Error,
+    err: any,
     _req: express.Request,
     res: express.Response,
     _next: express.NextFunction,
   ) => {
     console.error(err);
-    res.status(500).json({ message: "Internal server error" });
+
+    // Erreur de duplication (ex: name unique déjà pris)
+    if (err.code === 11000) {
+      const field = Object.keys(err.keyValue)[0];
+      errorResponse(
+        res,
+        `Ce ${field} existe déjà`,
+        StatusCodes.CONFLICT,
+        field,
+      );
+      return;
+    }
+
+    // Erreur de validation Mongoose (ex: required manquant, mauvais type)
+    if (err.name === "ValidationError") {
+      const firstError = Object.values(err.errors)[0] as { message: string };
+      errorResponse(res, firstError.message, StatusCodes.BAD_REQUEST);
+      return;
+    }
+
+    // Erreur générique / inconnue
+    errorResponse(
+      res,
+      "Erreur interne du serveur",
+      StatusCodes.INTERNAL_SERVER_ERROR,
+    );
   },
 );
 
