@@ -9,6 +9,8 @@ import menuCategoryRouter from "./routes/menuCategory.routes.js";
 import menuExtraTypeRouter from "./routes/menuExtraType.routes.js";
 import menuExtraRouter from "./routes/menuExtra.routes.js";
 import menuItemRouter from "./routes/menuItem.routes.js";
+import orderRouter from "./routes/order.routes.js";
+import tableRouter from "./routes/table.routes.js";
 
 const app = express();
 
@@ -35,6 +37,8 @@ app.use("/menu-categories", menuCategoryRouter);
 app.use("/menu-extra-types", menuExtraTypeRouter);
 app.use("/menu-extras", menuExtraRouter);
 app.use("/menu-items", menuItemRouter);
+app.use("/tables", tableRouter);
+app.use("/orders", orderRouter);
 
 // route de test
 app.get("/health", (_req, res) => {
