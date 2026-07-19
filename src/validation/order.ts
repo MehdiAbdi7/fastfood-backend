@@ -72,7 +72,33 @@ export const setDeliveryFeeSchema = z.object({
   deliveryFee: z.number().nonnegative("Le prix de livraison doit être positif"),
 });
 
+// --- Historique / Stats (drill-down année -> mois -> jour -> liste) ---
+
+const historyTypeSchema = z.object({
+  type: z.enum(["dine_in", "takeaway", "delivery"]),
+});
+
+export const historyYearsQuerySchema = historyTypeSchema;
+
+export const historyMonthsQuerySchema = historyTypeSchema.extend({
+  year: z.coerce.number().int().min(2000).max(2100),
+});
+
+export const historyDaysQuerySchema = historyMonthsQuerySchema.extend({
+  month: z.coerce.number().int().min(1).max(12),
+});
+
+export const historyOrdersQuerySchema = historyDaysQuerySchema.extend({
+  day: z.coerce.number().int().min(1).max(31),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 export type AddItemsToOrderInput = z.infer<typeof addItemsToOrderSchema>;
 export type UpdateOrderStatusInput = z.infer<typeof updateOrderStatusSchema>;
 export type SetDeliveryFeeInput = z.infer<typeof setDeliveryFeeSchema>;
+export type HistoryYearsQuery = z.infer<typeof historyYearsQuerySchema>;
+export type HistoryMonthsQuery = z.infer<typeof historyMonthsQuerySchema>;
+export type HistoryDaysQuery = z.infer<typeof historyDaysQuerySchema>;
+export type HistoryOrdersQuery = z.infer<typeof historyOrdersQuerySchema>;

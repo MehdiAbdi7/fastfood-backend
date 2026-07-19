@@ -20,3 +20,27 @@ export function validateBodySchema<T extends z.ZodTypeAny>(schema: T) {
     }
   };
 }
+
+export function validateQuerySchema<T extends z.ZodTypeAny>(schema: T) {
+  return async function (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    const result = schema.safeParse(req.query);
+    if (result.success) {
+      Object.defineProperty(req, "query", {
+        value: result.data,
+        writable: true,
+        configurable: true,
+      });
+      next();
+    } else {
+      res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        error: z.prettifyError(result.error),
+      });
+    }
+  };
+}

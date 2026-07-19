@@ -58,6 +58,7 @@ const orderSchema = new Schema<IOrder, OrderModel>(
     remark: { type: String, trim: true },
     deliveryFee: { type: Number, min: 0 },
     totalPrice: { type: Number, default: 0, min: 0 },
+    completedAt: { type: Date, default: null },
   },
   { timestamps: true },
 );

@@ -1,14 +1,24 @@
 import { NextFunction, Request, Response } from "express";
-import { Types } from "mongoose";
+import { Types, type QueryFilter } from "mongoose";
 import { Order } from "../models/order.js";
 import { Table } from "../models/table.js";
+import { IOrder } from "../types/models/order.js";
 import { StatusCodes } from "http-status-codes";
-import { errorResponse, successResponse } from "../utils/responseFormatter.js";
+import { io } from "../config/socket.js";
+import {
+  errorResponse,
+  successResponse,
+  paginatedResponse,
+} from "../utils/responseFormatter.js";
 import {
   AddItemsToOrderInput,
   CreateOrderInput,
   SetDeliveryFeeInput,
   UpdateOrderStatusInput,
+  HistoryYearsQuery,
+  HistoryMonthsQuery,
+  HistoryDaysQuery,
+  HistoryOrdersQuery,
 } from "../validation/order.js";
 
 // Convertit les items reçus de Zod (ids en string) vers le format attendu par Mongoose (ids en ObjectId)
@@ -50,6 +60,9 @@ export async function createOrder(
           existingOrder.items.push(...toOrderItems(data.items));
           if (data.remark) existingOrder.remark = data.remark;
           await existingOrder.save();
+
+          io.to("dashboard").emit("order_items_added", existingOrder);
+
           successResponse(
             res,
             existingOrder,
@@ -65,6 +78,8 @@ export async function createOrder(
       table.status = "occupied";
       await table.save();
 
+      io.to("dashboard").emit("new_order", newOrder);
+
       successResponse(
         res,
         newOrder,
@@ -76,6 +91,9 @@ export async function createOrder(
 
     // takeaway / delivery : toujours une commande indépendante
     const newOrder = await Order.create(data);
+
+    io.to("dashboard").emit("new_order", newOrder);
+
     successResponse(
       res,
       newOrder,
@@ -212,6 +230,12 @@ export async function updateOrderStatus(
     }
 
     order.status = newStatus;
+
+    // On fige la date de vente réelle au moment du paiement (pas createdAt/updatedAt)
+    if (newStatus === "completed") {
+      order.completedAt = new Date();
+    }
+
     await order.save();
 
     // La table n'est libérée qu'une fois la commande payée (completed), pas juste "prête"
@@ -224,6 +248,11 @@ export async function updateOrderStatus(
         status: "free",
         currentOrderId: null,
       });
+    }
+
+    // Notifie le client qui suit sa commande uniquement quand elle passe à "ready"
+    if (newStatus === "ready") {
+      io.to(`order:${order._id}`).emit("order_ready", order);
     }
 
     successResponse(res, order, "Statut de la commande mis à jour");
@@ -249,6 +278,143 @@ export async function trackOrder(
     }
 
     successResponse(res, order, "Suivi de la commande récupéré avec succès");
+  } catch (error) {
+    next(error);
+  }
+}
+
+// --- Historique / Stats (drill-down année -> mois -> jour -> liste) ---
+
+export async function getHistoryYears(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const { type } = req.query as unknown as HistoryYearsQuery;
+
+    const results = await Order.aggregate([
+      { $match: { status: "completed", type, completedAt: { $ne: null } } },
+      {
+        $group: {
+          _id: { $year: "$completedAt" },
+          count: { $sum: 1 },
+          totalSales: { $sum: "$totalPrice" },
+        },
+      },
+      { $sort: { _id: -1 } },
+      { $project: { _id: 0, year: "$_id", count: 1, totalSales: 1 } },
+    ]);
+
+    successResponse(res, results, "Historique par année récupéré avec succès");
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getHistoryMonths(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const { type, year } = req.query as unknown as HistoryMonthsQuery;
+
+    const results = await Order.aggregate([
+      {
+        $match: {
+          status: "completed",
+          type,
+          completedAt: {
+            $gte: new Date(Date.UTC(year, 0, 1)),
+            $lt: new Date(Date.UTC(year + 1, 0, 1)),
+          },
+        },
+      },
+      {
+        $group: {
+          _id: { $month: "$completedAt" },
+          count: { $sum: 1 },
+          totalSales: { $sum: "$totalPrice" },
+        },
+      },
+      { $sort: { _id: 1 } },
+      { $project: { _id: 0, month: "$_id", count: 1, totalSales: 1 } },
+    ]);
+
+    successResponse(res, results, "Historique par mois récupéré avec succès");
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getHistoryDays(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const { type, year, month } = req.query as unknown as HistoryDaysQuery;
+
+    const results = await Order.aggregate([
+      {
+        $match: {
+          status: "completed",
+          type,
+          completedAt: {
+            $gte: new Date(Date.UTC(year, month - 1, 1)),
+            $lt: new Date(Date.UTC(year, month, 1)),
+          },
+        },
+      },
+      {
+        $group: {
+          _id: { $dayOfMonth: "$completedAt" },
+          count: { $sum: 1 },
+          totalSales: { $sum: "$totalPrice" },
+        },
+      },
+      { $sort: { _id: 1 } },
+      { $project: { _id: 0, day: "$_id", count: 1, totalSales: 1 } },
+    ]);
+
+    successResponse(res, results, "Historique par jour récupéré avec succès");
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getHistoryOrders(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const { type, year, month, day, page, limit } =
+      req.query as unknown as HistoryOrdersQuery;
+
+    const dayStart = new Date(Date.UTC(year, month - 1, day));
+    const dayEnd = new Date(Date.UTC(year, month - 1, day + 1));
+
+    const filter: QueryFilter<IOrder> = {
+      status: "completed",
+      type,
+      completedAt: { $gte: dayStart, $lt: dayEnd },
+    };
+
+    const [orders, total] = await Promise.all([
+      Order.find(filter)
+        .sort({ completedAt: 1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      Order.countDocuments(filter),
+    ]);
+
+    paginatedResponse(res, orders, {
+      totalCount: total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: page,
+    });
   } catch (error) {
     next(error);
   }

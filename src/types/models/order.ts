@@ -31,6 +31,7 @@ export interface IOrder {
   remark?: string;
   deliveryFee?: number; // requis si type=delivery
   totalPrice: number; // calculé automatiquement (pre-save hook), inclut deliveryFee
+  completedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
