@@ -1,3 +1,4 @@
 node_modules/
 .env
+qrcode-commande.png
 dist/
