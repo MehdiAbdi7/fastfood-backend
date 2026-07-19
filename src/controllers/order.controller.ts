@@ -52,10 +52,10 @@ export async function createOrder(
       if (table.currentOrderId) {
         const existingOrder = await Order.findOne({
           _id: table.currentOrderId,
-          status: "pending",
+          status: { $in: ["pending", "ready"] },
         });
 
-        // Fusion auto : la table est occupée par une commande pending -> on ajoute les items dedans
+        // Fusion auto : la table est occupée par une commande pending ou ready -> on ajoute les items dedans
         if (existingOrder) {
           existingOrder.items.push(...toOrderItems(data.items));
           if (data.remark) existingOrder.remark = data.remark;
@@ -66,7 +66,7 @@ export async function createOrder(
           successResponse(
             res,
             existingOrder,
-            "Items ajoutés à la commande existante de la table",
+            "Produits ajoutés à la commande existante de la table",
           );
           return;
         }
@@ -143,7 +143,7 @@ export async function getOrderById(
   }
 }
 
-// Ajout manuel d'items par le staff (takeaway/delivery/dine_in tant que la commande est pending)
+// Ajout manuel d'items par le staff (takeaway/delivery/dine_in tant que la commande est pending ou ready)
 export async function addItemsToOrder(
   req: Request<{ id: string }, {}, AddItemsToOrderInput>,
   res: Response,
@@ -156,7 +156,7 @@ export async function addItemsToOrder(
       return;
     }
 
-    if (order.status !== "pending") {
+    if (order.status == "completed" || order.status == "cancelled") {
       errorResponse(
         res,
         "Impossible de modifier une commande déjà terminée ou annulée",

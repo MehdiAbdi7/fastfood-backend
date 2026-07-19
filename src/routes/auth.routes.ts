@@ -3,6 +3,7 @@ import { checkUser, login, register } from "../controllers/auth.controller.js";
 import { CheckAuth, isAdmin } from "../middlewares/auth.js";
 import { validateBodySchema } from "../middlewares/validations.js";
 import { loginSchema, registerSchema } from "../validation/user.js";
+import { loginLimiter } from "../middlewares/rateLimiters.js";
 
 const authRouter = Router();
 
@@ -14,6 +15,6 @@ authRouter.post(
   validateBodySchema(registerSchema),
   register,
 );
-authRouter.post("/login", validateBodySchema(loginSchema), login);
+authRouter.post("/login", loginLimiter, validateBodySchema(loginSchema), login);
 
 export default authRouter;

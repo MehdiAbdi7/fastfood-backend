@@ -27,6 +27,7 @@ import {
   historyDaysQuerySchema,
   historyOrdersQuerySchema,
 } from "../validation/order.js";
+import { createOrderLimiter } from "../middlewares/rateLimiters.js";
 
 const orderRouter = Router();
 
@@ -59,7 +60,12 @@ orderRouter.get(
 orderRouter.get("/:id/track", trackOrder);
 orderRouter.get("/", CheckAuth, getOrders);
 orderRouter.get("/:id", CheckAuth, getOrderById);
-orderRouter.post("/", validateBodySchema(createOrderSchema), createOrder);
+orderRouter.post(
+  "/",
+  createOrderLimiter,
+  validateBodySchema(createOrderSchema),
+  createOrder,
+);
 orderRouter.patch(
   "/:id/items",
   CheckAuth,
