@@ -38,9 +38,10 @@ const orderSchema = new Schema<IOrder, OrderModel>(
     },
     status: {
       type: String,
-      enum: ["pending", "ready", "completed", "cancelled"],
+      enum: ["pending", "ready", "out_for_delivery", "completed", "cancelled"],
       default: "pending",
     },
+    dailyNumber: { type: Number, required: true },
     table: { type: Schema.Types.ObjectId, ref: "Table" },
     client: {
       fullName: { type: String, required: true, trim: true },

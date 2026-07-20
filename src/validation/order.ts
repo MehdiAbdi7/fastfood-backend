@@ -64,7 +64,13 @@ export const addItemsToOrderSchema = z.object({
 });
 
 export const updateOrderStatusSchema = z.object({
-  status: z.enum(["pending", "ready", "completed", "cancelled"]),
+  status: z.enum([
+    "pending",
+    "ready",
+    "out_for_delivery",
+    "completed",
+    "cancelled",
+  ]),
 });
 
 // Le staff fixe le prix de livraison manuellement quand la commande arrive (dashboard)

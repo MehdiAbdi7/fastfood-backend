@@ -20,6 +20,7 @@ import {
   HistoryDaysQuery,
   HistoryOrdersQuery,
 } from "../validation/order.js";
+import { getNextOrderNumber, resetOrderCounter } from "../utils/dailyNumber.js";
 
 // Convertit les items reçus de Zod (ids en string) vers le format attendu par Mongoose (ids en ObjectId)
 function toOrderItems(items: CreateOrderInput["items"]) {
@@ -73,7 +74,8 @@ export async function createOrder(
       }
 
       // Pas de commande en cours -> nouvelle commande + occupation de la table
-      const newOrder = await Order.create(data);
+      const dailyNumber = await getNextOrderNumber();
+      const newOrder = await Order.create({ ...data, dailyNumber });
       table.currentOrderId = newOrder._id;
       table.status = "occupied";
       await table.save();
@@ -90,7 +92,8 @@ export async function createOrder(
     }
 
     // takeaway / delivery : toujours une commande indépendante
-    const newOrder = await Order.create(data);
+    const dailyNumber = await getNextOrderNumber();
+    const newOrder = await Order.create({ ...data, dailyNumber });
 
     io.to("dashboard").emit("new_order", newOrder);
 
@@ -229,6 +232,16 @@ export async function updateOrderStatus(
       return;
     }
 
+    // out_for_delivery réservé aux commandes delivery
+    if (newStatus === "out_for_delivery" && order.type !== "delivery") {
+      errorResponse(
+        res,
+        "Ce statut est réservé aux livraisons",
+        StatusCodes.BAD_REQUEST,
+      );
+      return;
+    }
+
     order.status = newStatus;
 
     // On fige la date de vente réelle au moment du paiement (pas createdAt/updatedAt)
@@ -250,9 +263,13 @@ export async function updateOrderStatus(
       });
     }
 
-    // Notifie le client qui suit sa commande uniquement quand elle passe à "ready"
+    // Notifie le client qui suit sa commande à chaque étape pertinente
     if (newStatus === "ready") {
       io.to(`order:${order._id}`).emit("order_ready", order);
+    }
+
+    if (newStatus === "out_for_delivery") {
+      io.to(`order:${order._id}`).emit("order_out_for_delivery", order);
     }
 
     successResponse(res, order, "Statut de la commande mis à jour");
@@ -278,6 +295,20 @@ export async function trackOrder(
     }
 
     successResponse(res, order, "Suivi de la commande récupéré avec succès");
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Reset manuel du compteur de commandes (action staff/admin, aucun déclenchement automatique)
+export async function resetCounter(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const value = await resetOrderCounter();
+    successResponse(res, { value }, "Compteur de commandes réinitialisé");
   } catch (error) {
     next(error);
   }

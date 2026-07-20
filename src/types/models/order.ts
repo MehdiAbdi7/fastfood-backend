@@ -24,7 +24,8 @@ export interface IOrderClient {
 
 export interface IOrder {
   type: "dine_in" | "takeaway" | "delivery";
-  status: "pending" | "ready" | "completed" | "cancelled";
+  status: "pending" | "ready" | "out_for_delivery" | "completed" | "cancelled";
+  dailyNumber: number; // numéro de commande unique par jour, généré automatiquement
   table?: Types.ObjectId; // ref Table, requis si type=dine_in
   client: IOrderClient;
   items: IOrderItem[];

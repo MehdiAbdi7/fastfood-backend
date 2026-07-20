@@ -7,12 +7,13 @@ import {
   setDeliveryFee,
   updateOrderStatus,
   trackOrder,
+  resetCounter,
   getHistoryYears,
   getHistoryMonths,
   getHistoryDays,
   getHistoryOrders,
 } from "../controllers/order.controller.js";
-import { CheckAuth } from "../middlewares/auth.js";
+import { CheckAuth, isAdmin } from "../middlewares/auth.js";
 import {
   validateBodySchema,
   validateQuerySchema,
@@ -31,7 +32,7 @@ import { createOrderLimiter } from "../middlewares/rateLimiters.js";
 
 const orderRouter = Router();
 
-// Routes statiques (historique + tracking) AVANT les routes dynamiques /:id
+// Routes statiques (historique + tracking + counter) AVANT les routes dynamiques /:id
 orderRouter.get(
   "/history/years",
   CheckAuth,
@@ -56,6 +57,8 @@ orderRouter.get(
   validateQuerySchema(historyOrdersQuerySchema),
   getHistoryOrders,
 );
+
+orderRouter.post("/counter/reset", CheckAuth, isAdmin, resetCounter);
 
 orderRouter.get("/:id/track", trackOrder);
 orderRouter.get("/", CheckAuth, getOrders);
