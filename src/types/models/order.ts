@@ -14,6 +14,7 @@ export interface IOrderItem {
   selectedExtras: IOrderItemExtra[];
   excludedIngredients: string[];
   quantity: number;
+  isKidsMenu?: boolean;
 }
 
 export interface IOrderClient {

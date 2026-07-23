@@ -12,6 +12,7 @@ export interface IMenuItem {
   variants: IMenuItemVariant[];
   availableExtras: Types.ObjectId[];
   removableIngredients: string[];
+  imageUrl?: string;
   available: boolean;
   createdAt: Date;
   updatedAt: Date;

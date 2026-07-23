@@ -17,6 +17,7 @@ export const createMenuItemSchema = z.object({
   variants: z.array(variantSchema).min(1, "Au moins un variant est requis"),
   availableExtras: z.array(objectIdSchema).default([]).optional(),
   removableIngredients: z.array(z.string().trim()).default([]).optional(),
+  imageUrl: z.string().trim().url("URL d'image invalide").optional(),
   available: z.boolean().default(true).optional(),
 });
 

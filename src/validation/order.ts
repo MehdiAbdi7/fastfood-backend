@@ -19,6 +19,7 @@ const orderItemSchema = z.object({
   selectedExtras: z.array(orderItemExtraSchema).default([]),
   excludedIngredients: z.array(z.string().trim()).default([]),
   quantity: z.number().int().min(1),
+  isKidsMenu: z.boolean().default(false),
 });
 
 // Chaque type de commande a ses propres champs client obligatoires

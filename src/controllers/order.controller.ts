@@ -4,6 +4,7 @@ import { Order } from "../models/order.js";
 import { Table } from "../models/table.js";
 import { IOrder } from "../types/models/order.js";
 import { StatusCodes } from "http-status-codes";
+import { enforceKidsMenuPricing } from "../utils/kidsMenu.js";
 import { io } from "../config/socket.js";
 import {
   errorResponse,
@@ -41,6 +42,8 @@ export async function createOrder(
 ) {
   try {
     const data = req.body;
+
+    await enforceKidsMenuPricing(data.items);
 
     // Cas dine_in : on vérifie si la table a déjà une commande en cours
     if (data.type === "dine_in") {
@@ -167,6 +170,8 @@ export async function addItemsToOrder(
       );
       return;
     }
+
+    await enforceKidsMenuPricing(req.body.items);
 
     order.items.push(...toOrderItems(req.body.items));
     await order.save();

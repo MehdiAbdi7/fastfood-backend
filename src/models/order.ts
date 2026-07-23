@@ -25,6 +25,7 @@ const orderItemSchema = new Schema(
     selectedExtras: { type: [orderItemExtraSchema], default: [] },
     excludedIngredients: { type: [String], default: [] },
     quantity: { type: Number, required: true, min: 1 },
+    isKidsMenu: { type: Boolean, default: false },
   },
   { _id: false },
 );

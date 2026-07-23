@@ -20,6 +20,7 @@ const menuItemSchema = new Schema<IMenuItem, MenuItemModel>(
     ],
     availableExtras: [{ type: Schema.Types.ObjectId, ref: "MenuExtra" }],
     removableIngredients: [{ type: String, trim: true }],
+    imageUrl: { type: String, trim: true },
     available: { type: Boolean, default: true },
   },
   { timestamps: true },

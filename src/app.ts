@@ -11,6 +11,7 @@ import menuExtraRouter from "./routes/menuExtra.routes.js";
 import menuItemRouter from "./routes/menuItem.routes.js";
 import orderRouter from "./routes/order.routes.js";
 import tableRouter from "./routes/table.routes.js";
+import uploadRouter from "./routes/upload.routes.js";
 
 const app = express();
 
@@ -39,6 +40,7 @@ app.use("/menu-extras", menuExtraRouter);
 app.use("/menu-items", menuItemRouter);
 app.use("/tables", tableRouter);
 app.use("/orders", orderRouter);
+app.use("/upload", uploadRouter);
 
 // route de test
 app.get("/health", (_req, res) => {
@@ -76,6 +78,12 @@ app.use(
     if (err.name === "ValidationError") {
       const firstError = Object.values(err.errors)[0] as { message: string };
       errorResponse(res, firstError.message, StatusCodes.BAD_REQUEST);
+      return;
+    }
+
+    // Erreur métier custom avec statusCode explicite (ex: enforceKidsMenuPricing)
+    if (err.statusCode && typeof err.statusCode === "number") {
+      errorResponse(res, err.message, err.statusCode);
       return;
     }
 
