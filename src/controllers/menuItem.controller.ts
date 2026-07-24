@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { MenuItem } from "../models/menuItem.js";
 import { StatusCodes } from "http-status-codes";
 import { successResponse } from "../utils/responseFormatter.js";
+import cloudinary from "../config/cloudinary.js";
 import {
   CreateMenuItemInput,
   UpdateMenuItemInput,
@@ -72,6 +73,12 @@ export async function deleteMenuItem(
       res.status(StatusCodes.NOT_FOUND).json({ error: "Produit introuvable" });
       return;
     }
+
+    // Nettoyage Cloudinary : éviter un fichier orphelin si le produit avait une image
+    if (deleted.imagePublicId) {
+      await cloudinary.uploader.destroy(deleted.imagePublicId);
+    }
+
     successResponse(res, null, "Produit supprimé avec succès");
   } catch (error) {
     next(error);

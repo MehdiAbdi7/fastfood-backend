@@ -13,6 +13,7 @@ export interface IMenuItem {
   availableExtras: Types.ObjectId[];
   removableIngredients: string[];
   imageUrl?: string;
+  imagePublicId?: string;
   available: boolean;
   createdAt: Date;
   updatedAt: Date;
